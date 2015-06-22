@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+<title>Working with Dates</title>
+
+<script src="working_with_dates_files/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="working_with_dates_files/bootstrap-3.3.1/css/flatly.min.css" rel="stylesheet" />
+<script src="working_with_dates_files/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="working_with_dates_files/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="working_with_dates_files/bootstrap-3.3.1/shim/respond.min.js"></script>
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+</style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="working_with_dates_files/highlight/textmate.css"
+      type="text/css" />
+<script src="working_with_dates_files/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="Custom_Test.html">Healthy Data Science</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="Custom_Test.html">Home</a></li>
+        <li class="dropdown">
+          <a href="authoring" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Electronic Health Record <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+             <li class="dropdown-header">Basics</li>
+             <li><a href="working_with_dates.html">Working with Dates</a></li>
+             <li><a href="fast_append.html">Fast Append</a></li>
+             <li class="divider"></li>
+             <li class="dropdown-header">Diagnoses</li>
+             <li><a href="ahrq_ccs_icd9.html">Clinical Classification Software</a></li>
+             <li><a href="cms_hcc.html">Hierarchical Condition Categories</a></li>
+             <li class="divider"></li>
+             <li class="dropdown-header">Procedures</li>
+             <li><a href="ahrq_ccs_cpt.html">Clinical Classification Software</a></li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="formats" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Medicare Claims <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+             <li class="dropdown-header">Documents</li>
+             <li><a href="html_document_format.html">HTML</a></li>
+             <li><a href="pdf_document_format.html">PDF</a></li>
+             <li><a href="word_document_format.html">Word</a></li>
+             <li><a href="markdown_document_format.html">Markdown</a></li>
+             <li class="divider"></li>
+             <li class="dropdown-header">Presentations</li>
+             <li><a href="ioslides_presentation_format.html">ioslides</a></li>
+             <li><a href="slidy_presentation_format.html">Slidy</a></li>
+             <li><a href="beamer_presentation_format.html">Beamer</a></li>
+             <li class="divider"></li>
+             <li class="dropdown-header">Other</li>
+             <li><a href="package_vignette_format.html">Package Vignette</a></li>
+             <li><a href="tufte_handout_format.html">Tufte Handout</a></li>
+             <li class="divider"></li>
+             <li><a href="r_notebook_format.html">R Notebooks</a></li>
+          </ul>
+        </li>
+         <li class="dropdown">
+          <a href="developer" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Public Data Sets <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+             <li><a href="developer_html_widgets.html">HTML Widgets</a></li>
+             <li class="divider"></li>
+             <li><a href="developer_parameterized_reports.html">Parameterized Reports</a></li>
+             <li class="divider"></li>
+             <li><a href="developer_document_templates.html">Document Templates</a></li>
+             <li><a href="developer_custom_formats.html">Creating New Formats</a></li>
+             <li class="divider"></li>
+             <li><a href="https://github.com/rstudio/rmarkdown">R Markdown on GitHub</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+<h1 class="title">Working with Dates</h1>
+</div>
+
+
+<p>Data stored in a healthcare record is often organized by patient, visit, and time. When trying to analyze trends for individual patients or populations, it’s important to quickly manipulate dates. Dates come out of our EHR as a combination of Date, Time, and AM/PM, for example “01/01/2001 12:31:50 AM”. This post is about quickly working with this data in R.</p>
+<p>Let’s start by loading the two necessary R packages, data.table and lubridate (note that I use data.table version 1.9.5, can be downloaded by following <a href="https://github.com/Rdatatable/data.table/wiki/Installation">these</a> instructions):</p>
+<pre class="r"><code>library(data.table)
+library(lubridate)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;lubridate&#39;
+## 
+## The following objects are masked from &#39;package:data.table&#39;:
+## 
+##     hour, mday, month, quarter, wday, week, yday, year</code></pre>
+<p>Next, we’ll define a function that generates a set of dates:</p>
+<pre class="r"><code>Generate_Dates &lt;- function(size){
+    require(data.table)
+    
+    ## Generate Date
+    data &lt;- data.table(mo = as.integer(runif(size, min = 1, max = 12)), day = as.integer(runif(size, min = 1, max = 30)), yr = as.integer(runif(size, min = 1990, max = 2014)))
+    data[, Date := paste(mo, day, yr, sep = &quot;/&quot;)]
+    data[, c(&quot;mo&quot;, &quot;day&quot;, &quot;yr&quot;) := NULL]
+    
+    ## Generate Time
+    data &lt;- data[, c(&quot;hr&quot;, &quot;min&quot;, &quot;sec&quot;) := .(as.integer(runif(size, min = 1, max = 12)), min = as.integer(runif(size, min = 1, max = 60)), sec = as.integer(runif(size, min = 1, max = 60)))]
+    data[, Time := paste(hr, min, sec, sep = &quot;:&quot;)]
+    data[, c(&quot;hr&quot;, &quot;min&quot;, &quot;sec&quot;) := NULL]
+    
+    ## Generate AM/PM
+    data[, AM_PM := sample(c(&quot;AM&quot;, &quot;PM&quot;), size, replace = TRUE)]
+    
+    ## Combine
+    data[, Date := paste(Date, Time, AM_PM, sep = &quot; &quot;)]
+    data[, c(&quot;Time&quot;, &quot;AM_PM&quot;) := NULL]
+    
+    ## Return dates
+    data
+}</code></pre>
+<p>To demonstrate the functions, we’ll use a set of 1,000 dates:</p>
+<pre class="r"><code>data &lt;- Generate_Dates(1000)
+head(data)</code></pre>
+<pre><code>##                    Date
+## 1:  6/24/1996 6:8:37 AM
+## 2: 6/15/2001 9:49:59 AM
+## 3: 9/12/1996 6:35:47 AM
+## 4: 6/1/1994 11:43:35 PM
+## 5:   7/4/1993 5:47:9 PM
+## 6: 2/10/2010 2:29:36 AM</code></pre>
+<div id="tstrplit-and-fast_strptime" class="section level2">
+<h2>tstrplit() and fast_strptime()</h2>
+<p>To extract date from the value above (“01/01/2001 12:31:50 AM”), you need to:<br />1) Pull out the first set of characters from the string<br />2) Convert that first set of characters from a string to a Date type</p>
+<p>For the first step, use <a href="https://github.com/Rdatatable/data.table/issues/1026">tstrsplit()</a> from the data.table package. This function will split the single string column into three string columns, if you separate by a space (&quot; “). I then delete the second and third columns, because we’re only interested in the date.</p>
+<pre class="r"><code>data[, c(&quot;Date&quot;, &quot;Time&quot;, &quot;AM_PM&quot;) := tstrsplit(Date, &quot; &quot;, fixed = TRUE)][, c(&quot;Time&quot;, &quot;AM_PM&quot;) := NULL]</code></pre>
+<p>For the second step, use <a href="http://www.inside-r.org/packages/cran/lubridate/docs/parse_date_time">fast_strptime()</a> from the lubridate package.</p>
+<pre class="r"><code>data[, Date := as.Date(fast_strptime(Date, format = &quot;%m/%d/%Y&quot;))]</code></pre>
+<p>All together, to fix 1,000 dates:</p>
+<pre class="r"><code>data[, c(&quot;Date&quot;, &quot;Time&quot;, &quot;AM_PM&quot;) := tstrsplit(Date, &quot; &quot;, fixed = TRUE)][, c(&quot;Time&quot;, &quot;AM_PM&quot;) := NULL][, Date := as.Date(fast_strptime(Date, format = &quot;%m/%d/%Y&quot;))]</code></pre>
+</div>
+<div id="dates" class="section level2">
+<h2>100,000 dates</h2>
+<pre class="r"><code>data &lt;- Generate_Dates(100000)
+system.time(data[, c(&quot;Date&quot;, &quot;Time&quot;, &quot;AM_PM&quot;) := tstrsplit(Date, &quot; &quot;, fixed = TRUE)][, c(&quot;Time&quot;, &quot;AM_PM&quot;) := NULL][, Date := as.Date(fast_strptime(Date, format = &quot;%m/%d/%Y&quot;))])</code></pre>
+<pre><code>##    user  system elapsed 
+##   0.186   0.006   0.192</code></pre>
+</div>
+<div id="dates-1" class="section level2">
+<h2>1,000,000 dates</h2>
+<pre class="r"><code>data &lt;- Generate_Dates(1000000)
+system.time(data[, c(&quot;Date&quot;, &quot;Time&quot;, &quot;AM_PM&quot;) := tstrsplit(Date, &quot; &quot;, fixed = TRUE)][, c(&quot;Time&quot;, &quot;AM_PM&quot;) := NULL][, Date := as.Date(fast_strptime(Date, format = &quot;%m/%d/%Y&quot;))])</code></pre>
+<pre><code>##    user  system elapsed 
+##   3.896   0.112   4.047</code></pre>
+</div>
+<div id="note-about-times" class="section level2">
+<h2>Note about times</h2>
+<p>My code is running on a 13-inch MacBook Pro with 8 GB RAM.</p>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p><a href="http://stackoverflow.com/questions/12786335/why-is-as-date-slow-on-a-character-vector" class="uri">http://stackoverflow.com/questions/12786335/why-is-as-date-slow-on-a-character-vector</a><br /><a href="http://stackoverflow.com/questions/18154556/r-split-text-string-in-a-data-table-columns" class="uri">http://stackoverflow.com/questions/18154556/r-split-text-string-in-a-data-table-columns</a></p>
+</div>
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -4,10 +4,10 @@ title: "Welcome to Healthy Data Science"
 
 Overview
 ----------------
-Healthy data science is about improving the way healthcare systems use data to serve their patients. It's a place to share insights and understanding about how to effectively analyze healthcare delivery and population health data. Articles on healthy data science are organized by the type of data set used for the analysis, including:  
+Healthy data science is about improving the way healthcare systems use data to serve their patients. It's a place to share insights and understanding about how to effectively analyze healthcare delivery and population health data using R. Articles on healthy data science are organized by the type of data set used for the analysis, including:  
 - Electronic health record data  
-- Medicare claims data  
-- Public data sets   
+- Medicare claims data (coming soon)  
+- Public data sets (coming soon)  
 
 Motivation
 ----------------

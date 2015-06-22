@@ -1,0 +1,85 @@
+---
+title: "Working with Dates"
+---
+
+Data stored in a healthcare record is often organized by patient, visit, and time. When trying to analyze trends for individual patients or populations, it's important to quickly manipulate dates. Dates come out of our EHR as a combination of Date, Time, and AM/PM, for example "01/01/2001 12:31:50 AM". This post is about quickly working with this data in R.  
+
+Let's start by loading the two necessary R packages, data.table and lubridate (note that I use data.table version 1.9.5, can be downloaded by following [these](https://github.com/Rdatatable/data.table/wiki/Installation) instructions):  
+```{r libraries, echo=TRUE}
+library(data.table)
+library(lubridate)
+```
+
+Next, we'll define a function that generates a set of dates:  
+```{r Generate_Dates, etcho=TRUE, cache=TRUE}
+Generate_Dates <- function(size){
+    require(data.table)
+    
+    ## Generate Date
+    data <- data.table(mo = as.integer(runif(size, min = 1, max = 12)), day = as.integer(runif(size, min = 1, max = 30)), yr = as.integer(runif(size, min = 1990, max = 2014)))
+    data[, Date := paste(mo, day, yr, sep = "/")]
+    data[, c("mo", "day", "yr") := NULL]
+    
+    ## Generate Time
+    data <- data[, c("hr", "min", "sec") := .(as.integer(runif(size, min = 1, max = 12)), min = as.integer(runif(size, min = 1, max = 60)), sec = as.integer(runif(size, min = 1, max = 60)))]
+    data[, Time := paste(hr, min, sec, sep = ":")]
+    data[, c("hr", "min", "sec") := NULL]
+    
+    ## Generate AM/PM
+    data[, AM_PM := sample(c("AM", "PM"), size, replace = TRUE)]
+    
+    ## Combine
+    data[, Date := paste(Date, Time, AM_PM, sep = " ")]
+    data[, c("Time", "AM_PM") := NULL]
+    
+    ## Return dates
+    data
+}
+```
+
+To demonstrate the functions, we'll use a set of 1,000 dates:
+```{r small_dates, echo=TRUE}
+data <- Generate_Dates(1000)
+head(data)
+```
+
+## tstrplit() and fast_strptime()
+To extract date from the value above ("01/01/2001 12:31:50 AM"), you need to:  
+1) Pull out the first set of characters from the string  
+2) Convert that first set of characters from a string to a Date type  
+
+For the first step, use [tstrsplit()](https://github.com/Rdatatable/data.table/issues/1026) from the data.table package. This function will split the single string column into three string columns, if you separate by a space (" "). I then delete the second and third columns, because we're only interested in the date.    
+
+```{r small_dates_tstrsplit, echo=TRUE}
+data[, c("Date", "Time", "AM_PM") := tstrsplit(Date, " ", fixed = TRUE)][, c("Time", "AM_PM") := NULL]
+```
+
+For the second step, use [fast_strptime()](http://www.inside-r.org/packages/cran/lubridate/docs/parse_date_time) from the lubridate package.
+
+```{r small_dates_faststrptime, echo=TRUE}
+data[, Date := as.Date(fast_strptime(Date, format = "%m/%d/%Y"))]
+```
+
+All together, to fix 1,000 dates:
+```{r small_dates_time, echo=TRUE}
+data[, c("Date", "Time", "AM_PM") := tstrsplit(Date, " ", fixed = TRUE)][, c("Time", "AM_PM") := NULL][, Date := as.Date(fast_strptime(Date, format = "%m/%d/%Y"))]
+```
+
+## 100,000 dates
+```{r 100k, echo=TRUE, cache=TRUE}
+data <- Generate_Dates(100000)
+system.time(data[, c("Date", "Time", "AM_PM") := tstrsplit(Date, " ", fixed = TRUE)][, c("Time", "AM_PM") := NULL][, Date := as.Date(fast_strptime(Date, format = "%m/%d/%Y"))])
+```
+
+## 1,000,000 dates
+```{r 1million, echo=TRUE, cache=TRUE}
+data <- Generate_Dates(1000000)
+system.time(data[, c("Date", "Time", "AM_PM") := tstrsplit(Date, " ", fixed = TRUE)][, c("Time", "AM_PM") := NULL][, Date := as.Date(fast_strptime(Date, format = "%m/%d/%Y"))])
+```
+
+## Note about times
+My code is running on a 13-inch MacBook Pro with 8 GB RAM.
+
+## References
+http://stackoverflow.com/questions/12786335/why-is-as-date-slow-on-a-character-vector  
+http://stackoverflow.com/questions/18154556/r-split-text-string-in-a-data-table-columns  
