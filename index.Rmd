@@ -4,7 +4,7 @@ title: "Welcome to Healthy Data Science"
 
 Overview
 ----------------
-Healthy data science is about improving the way healthcare systems use data to serve their patients. It's a place to share insights and understanding about how to effectively analyze healthcare delivery and population health data using R. Articles on healthy data science are organized by the type of data set used for the analysis, including:  
+Healthy data science is about improving the way healthcare systems use data to serve their patients. It's a place to share insights and understanding about how to effectively analyze healthcare delivery and population health data using R. Articles are organized by the type of data set used for the analysis, including:  
 - Electronic health record data  
 - Medicare claims data (coming soon)  
 - Public data sets (coming soon)  
@@ -13,11 +13,9 @@ Motivation
 ----------------
 While access to healthcare data must be highly regulated, insights and tools that enable effective analysis of that data should be publicly available. Health systems generate more digital data than ever before and for patients to benefit from this, meaningful analysis must keep pace. There is plenty of buzz and discussion about healthcare analytics, but healthy data science is a place for analysts in the thick of it to get in the weeds.  
 
-In 2013, I became part of a very small community of analysts using electronic health record data to support population health management programs. Let's just say it took me a few years to understand how to do this work well. Healthy data science is a place to share learnings and to push forward how we all do this work.
-
 Author
 ----------------
-Hi, my name is Mark and I'm an MD/MPP student at Duke University. My bachelors is in Math and I work as an analyst for the Duke Institute for Health Innovation. I love the open source environment of R, learned just about everything I know about R through Coursera, and frequently visit stack overflow. I created healthy data science to share expertise I have gained thanks to the time and support of so many others. If you have any questions, you can shoot me an email at mpdakkak@gmail.com.  
+Hi, my name is Mark and I'm an MD/MPP student at Duke University. My bachelors is in Math and I work as an analyst for the Duke Institute for Health Innovation. I love the open source environment of R, learned just about everything I know about R through Coursera, and very frequently benefit from insights shared on stack overflow. If you have any questions, you can shoot me an email at mpdakkak@gmail.com.  
 
 Details  
 ----------------
