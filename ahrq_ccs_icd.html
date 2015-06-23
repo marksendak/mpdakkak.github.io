@@ -155,7 +155,70 @@ img {
 </div>
 
 
-<p>Coming soon</p>
+<div id="intro" class="section level2">
+<h2>Intro</h2>
+<p>The <a href="https://www.hcup-us.ahrq.gov/toolssoftware/ccs/ccs.jsp">Clinical Classification Software (CCS) for diagnosis codes</a> is a software tool developed as part of the <a href="https://www.hcup-us.ahrq.gov/overview.jsp">Healthcare Cost and Utilization Project</a>, a Federal-State-Industry partnership sponsored by the Agency for Healthcare Research and Quality.</p>
+<p>In this post, we’ll deploy the CCS categorization scheme to International Classification of Disease (ICD) 9 diagnosis codes to identify diabetes and high blood pressure. This scheme collapses over 14,000 diagnosis codes into roughly 250 categories that are more useful in health data analysis.</p>
+<p>To get a sense of what the scheme looks like, check out the <a href="https://www.hcup-us.ahrq.gov/toolssoftware/ccs/AppendixASingleDX.txt">single-diagnosis appendix</a>, which maps sets of ICD 9 codes to diagnosis categories.</p>
+<p>To see how ICD codes are organized, check out this <a href="http://www.icd9data.com/">public reference</a>. Note that it’s a hierarchical scheme, where each additional decimal place conveys increasingly granular information.</p>
+</div>
+<div id="what-youll-need" class="section level2">
+<h2>What you’ll need</h2>
+<ol style="list-style-type: decimal">
+<li>Extract a list of patient ICD 9 diagnosis codes from your EHR, typically along with patient identifiers, dates, and encounter identifiers. To identify diagnoses, you’ll have to decide on a window of time to look at. For most cases, we look at two years worth of ICD 9 codes, but you may be interested in smaller or larger time periods. In the code below, this data set is called ‘data’.<br /></li>
+<li>Download the <a href="https://www.hcup-us.ahrq.gov/toolssoftware/ccs/Single_Level_CCS_2015.zip">Single Level CCS</a> zip file from the CCS website and within that folder, pull out the ‘$dxref 2015.csv’ file. In the code below, this data set is called ‘CCS’.</li>
+</ol>
+</div>
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<p>Load data.table and <a href="http://cran.r-project.org/web/packages/stringr/stringr.pdf">stringr</a>:</p>
+<pre class="r"><code>library(data.table)
+library(stringr)</code></pre>
+</div>
+<div id="clean-your-icd9-codes" class="section level2">
+<h2>Clean your ICD9 codes</h2>
+<p>The CCS crosswalk maps ICD9 codes without decimal places (relying on the unique sequence of digits), so you’ll have to remove decimals from your EHR data extract:</p>
+<pre class="r"><code>data[, ICD_Diagnosis_Code := gsub(&quot;\\.&quot;, &quot;&quot;, ICD_Diagnosis_Code)]</code></pre>
+</div>
+<div id="clean-ccs-crosswalk" class="section level2">
+<h2>Clean CCS crosswalk</h2>
+<p>You only need the first three columns from the CCS file and must to skip the first line when reading in the table. We’ll also change the names of the data to align with our EHR diagnosis codes:</p>
+<pre class="r"><code>CCS &lt;- fread(&quot;~/$dxref 2015.csv&quot;, skip = 1, select = 1:3)
+setnames(CCS, names(CCS), c(&quot;ICD_Diagnosis_Code&quot;, &quot;CCS_CATEGORY&quot;, &quot;CCS_CATEGORY_DESCRIPTION&quot;))</code></pre>
+<p>The ICD 9 codes in the crosswalk file include dashes and extra spaces that must be removed:</p>
+<pre class="r"><code>Remove_Dash &lt;- function(x){gsub(&quot;\\&#39;&quot;, &quot;&quot;, x)}
+CCS &lt;- CCS[, lapply(.SD, Remove_Dash)]
+
+Trim &lt;- function(x){str_trim(x, side = &quot;both&quot;)}
+CCS &lt;- CCS[, lapply(.SD, Trim)]</code></pre>
+<p>If you’re not familiar with data.table syntax, note that .SD stands for subset of data and is used to specify the columns to which you want to apply a function. If you don’t specify any columns, the function is applied to all columns.</p>
+</div>
+<div id="merge-icd9-codes-with-ccs-crosswalk" class="section level2">
+<h2>Merge ICD9 codes with CCS crosswalk</h2>
+<pre class="r"><code>data &lt;- merge(data, CCS, by = &quot;ICD_Diagnosis_Code&quot;, all.x = TRUE)</code></pre>
+<p>Now, each ICD 9 code you pulled from the EHR is assigned to a diagnosis category.</p>
+</div>
+<div id="example-identifying-diabetes" class="section level2">
+<h2>Example: Identifying Diabetes</h2>
+<pre class="r"><code>diabetes &lt;- data[CCS_CATEGORY_DESCRIPTION %in% c(&quot;DiabMel no c&quot;, &quot;DiabMel w/cm&quot;)]
+diabetes_patients &lt;- diabetes[, .(Diabetes = .N), by = Patient_Identifier][Diabetes &gt;= 2][, Diabetes := 1]</code></pre>
+<p>There’s two steps to the code above:<br />- Subset ICD 9 codes that are in diabetes CCS categories (diabetes mellitus with complications and without complications)<br />- For each patient, sum the number of ICD 9 codes in diabetes CCS categories. For patients with more than 2 codes, assign the variable “Diabetes” a value of 1.</p>
+</div>
+<div id="example-identifying-hypertension-high-blood-pressure" class="section level2">
+<h2>Example: Identifying Hypertension (High Blood Pressure)</h2>
+<pre class="r"><code>hypertension &lt;- data[CCS_CATEGORY_DESCRIPTION %in% c(&quot;HTN&quot;, &quot;Htn complicn&quot;)]
+htn_patients &lt;- hypertension[, .(HTN = .N), by = Patient_Identifier][HTN &gt;= 2][, HTN := 1]</code></pre>
+<p>There’s two steps to the code above:<br />- Subset ICD 9 codes that are in hypertension CCS categories (hypertension with complications and without complications)<br />- For each patient, sum the number of ICD 9 codes in hypertension CCS categories. For patients with more than 2 codes, assign the variable “HTN” a value of 1.</p>
+</div>
+<div id="faq" class="section level2">
+<h2>FAQ:</h2>
+<ul>
+<li>Is it really this easy to identify diagnoses? No, this technique has many limitations and there’s an entire field of medical research dedicated to developing computable phenotypes for chronic diseases. However, CCS codes have been used in many publications and are very useful for identifying patterns of disease within a population or tracking the timeline of diagnosis of a disesae for an individual patient.<br /></li>
+<li>What are some of the limitations? ICD 9 codes are primarily used a mechanism for payment and the reliability of the codes is questionable. For example, there are different coding contexts in which codes can be assigned. You may notice that codes assigned by providers at the point of care may be different than codes that make it into the final healthcare bill. I don’t get into those details, but there are algorithms that do take into account the context of the diagnosis code as well as the rank of the code.<br /></li>
+<li>Why a minimum of 2 codes for each patient to assign a diagnosis? Requiring at least two codes addresses some of the limitations described above. If a patient only has 1 code for a diagnosis over two years that doesn’t reappear, we have a high degree of suspicion that the patient hasn’t actually developed the given disease. For example, we’d like to see two different encounters at which providers document the development of complications secondary to diabetes before we change that code. This means there may be a lag in detection of certain conditions, but it’s a balance to achieve more accuracy.<br /></li>
+<li>Why look at 2 years? ICD 9 codes are only assigned at healthcare encounters. Let’s say a patient has high blood pressure, but didn’t see a doctor this year. We wouldn’t detect that patient’s condition unless we used a window of time that was wide enough to include healthcare encounters.</li>
+</ul>
+</div>
 
 
 </div>

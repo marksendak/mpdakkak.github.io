@@ -36,3 +36,6 @@ As a test case, I'll append 7 files that all have the same 7 columns pertaining 
 
 ## Note about times
 My code is running on a 13-inch MacBook Pro with 8 GB RAM.  
+
+## References
+http://stackoverflow.com/questions/21156271/fast-reading-and-combining-several-files-using-data-table-with-fread  
