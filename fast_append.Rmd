@@ -2,4 +2,37 @@
 title: "Fast Append"
 ---
 
-Coming soon
+Data extracted from an electronic health record typically will come in flat files (e.g., .csv files) that have the same columns, but cover different periods of time. For example, lets say you want to analyze diagnosis codes for a given population. Each file may have a set of four columns:  
+- Patient identifier  
+- Encounter identifier  
+- Date of diagnosis  
+- Diagnosis code  
+
+If the population being analyzed is large, there may be separate files for each year, or possibly each month. To quickly append all the files (assuming columns are identical), put all the separate files in a folder and use the following function:  
+```{r fastappend, eval=FALSE}
+fast_append <- function(directory){
+    ## Set directory
+    setwd(directory)
+    
+    ## Load data table
+    require(data.table)
+    
+    ## Get names of files in directory
+    all.files <- list.files(directory)
+    
+    ## Read data using fread
+    mylist <- lapply(all.files, fread)
+    
+    ## Append files
+    mydata <- rbindlist(mylist)
+    
+    ## return data
+    mydata
+}
+```
+
+## Time estimate
+As a test case, I'll append 7 files that all have the same 7 columns pertaining to lab data. Each data set is for a different year and all together, the 7 files are 330.3 MB. Using the function above, it takes 19 seconds to build a single table with 4.4 million rows.  
+
+## Note about times
+My code is running on a 13-inch MacBook Pro with 8 GB RAM.  

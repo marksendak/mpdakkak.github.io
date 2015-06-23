@@ -89,11 +89,11 @@ img {
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="Custom_Test.html">Healthy Data Science</a>
+      <a class="navbar-brand" href="index.html">Healthy Data Science</a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
-        <li><a href="Custom_Test.html">Home</a></li>
+        <li><a href="index.html">Home</a></li>
         <li class="dropdown">
           <a href="authoring" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Electronic Health Record <span class="caret"></span></a>
           <ul class="dropdown-menu" role="menu">
@@ -102,13 +102,14 @@ img {
              <li><a href="fast_append.html">Fast Append</a></li>
              <li class="divider"></li>
              <li class="dropdown-header">Diagnoses</li>
-             <li><a href="ahrq_ccs_icd9.html">Clinical Classification Software</a></li>
+             <li><a href="ahrq_ccs_icd.html">Clinical Classification Software</a></li>
              <li><a href="cms_hcc.html">Hierarchical Condition Categories</a></li>
              <li class="divider"></li>
              <li class="dropdown-header">Procedures</li>
              <li><a href="ahrq_ccs_cpt.html">Clinical Classification Software</a></li>
           </ul>
         </li>
+<!--        
         <li class="dropdown">
           <a href="formats" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Medicare Claims <span class="caret"></span></a>
           <ul class="dropdown-menu" role="menu">
@@ -143,6 +144,7 @@ img {
              <li><a href="https://github.com/rstudio/rmarkdown">R Markdown on GitHub</a></li>
           </ul>
         </li>
+//-->
       </ul>
     </div><!--/.nav-collapse -->
   </div><!--/.container -->
@@ -190,13 +192,13 @@ library(lubridate)</code></pre>
 <p>To demonstrate the functions, we’ll use a set of 1,000 dates:</p>
 <pre class="r"><code>data &lt;- Generate_Dates(1000)
 head(data)</code></pre>
-<pre><code>##                    Date
-## 1:  6/24/1996 6:8:37 AM
-## 2: 6/15/2001 9:49:59 AM
-## 3: 9/12/1996 6:35:47 AM
-## 4: 6/1/1994 11:43:35 PM
-## 5:   7/4/1993 5:47:9 PM
-## 6: 2/10/2010 2:29:36 AM</code></pre>
+<pre><code>##                     Date
+## 1:  6/29/2001 6:39:50 PM
+## 2: 10/20/2008 7:51:47 AM
+## 3: 10/28/2007 7:54:19 AM
+## 4: 7/26/2012 11:25:47 PM
+## 5:  7/20/2010 3:39:57 PM
+## 6:  2/8/2000 10:11:59 AM</code></pre>
 <div id="tstrplit-and-fast_strptime" class="section level2">
 <h2>tstrplit() and fast_strptime()</h2>
 <p>To extract date from the value above (“01/01/2001 12:31:50 AM”), you need to:<br />1) Pull out the first set of characters from the string<br />2) Convert that first set of characters from a string to a Date type</p>
