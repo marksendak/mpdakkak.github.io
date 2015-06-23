@@ -15,7 +15,7 @@ While access to healthcare data must be highly regulated, insights and tools tha
 
 Author
 ----------------
-Hi, my name is Mark and I'm an MD/MPP student at Duke University. My bachelors is in Math and I work as an analyst for the Duke Institute for Health Innovation. I love the open source environment of R, learned just about everything I know about R through Coursera, and very frequently benefit from insights shared on stack overflow. If you have any questions, you can shoot me an email at mpdakkak@gmail.com.  
+Hi, my name is Mark and I'm an MD/MPP student at Duke University. My bachelors is in Math and I work as an analyst for the [Duke Institute for Health Innovation](http://www.dihi.org/). I love the open source environment of R, learned just about everything I know about R through Coursera, and very frequently benefit from insights shared on stack overflow. If you have any questions, you can shoot me an email at mpdakkak@gmail.com.  
 
 Details  
 ----------------
