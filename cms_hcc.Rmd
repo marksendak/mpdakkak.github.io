@@ -1,5 +1,251 @@
 ---
-title: "Hierarchical Condition Categories"
+title: "Hierarchical Condition Categories (HCC)"
 ---
 
-Coming soon
+## Intro  
+The Centers for Medicare & Medicaid Services (CMS) hierarchical condition categories (HCC) model, implemented in 2004, is a risk-adjustment model used to adjust Medicare payments to health care plans for the health expenditure risk of their enrollees. It's intended use is to pay insurance plans appropriately for their expected relative costs. For example, health plans that care for overwhelmingly healthy populations are paid less than those that care for much sicker populations.  
+
+The full model includes variable interactions, demographics (e.g., age, gender), and indicator variables for Medicaid enrollment and disabled status. However, this post will only cover using the HCC model to cluster diagnosis codes into meaningful categories. We'll accomplish this by using 5 functions built below, each with it's own corresponding step. We'll implement the 2014 model for ICD 9 codes, but once ICD 10 is implemented in my environment, I'll update the post.  
+
+To see the different versions of the model, please visit:  
+- [2014 Model](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/Risk2014.html)  
+- [2015 Model](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/Risk2015.html)  
+- [ICD 10 Mapping](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/IDC10Mappings.html)  
+
+## Classification System  
+The HCC diagnostic classification system has four components:  
+- Classify over 14,000 ICD 9 diagnosis codes into 805 diagnostic groups, which represent a well-specified medical condition.  
+- Diagnosis groups are further aggregated into 189 condition categories, which describe a broader set of diseases. Diseases within a condition category are related clinically and with respect to cost.  
+- Only use the subset of 189 condition categories that best predict Medicare Part A (inpatient) and Part B (outpatient) medical expenditures. The most recent version (version 22) of the CMS HCC model includes 79 of the disease categories, excluding those that contain diagnoses that are vague/nonspecific (e.g., symptoms), discretionary in medical treatment or coding (e.g., osteoarthritis), not medically significant (e.g., muscle strain), or transitory/definitively treated (e.g., appendicitis). The model also excludes categories that do not empirically add to costs, as well as categories that are fully defined by the presence of procedures or durable medical equipment. This focuses the model on medical problems that are present, rather than services offered.  
+- Hierarchies are imposed among related condition categories, so that a person is coded for only the most severe manifestation among related diseases. For example, there are four condition categories related to Ischemic Heart Disease; acute myocardial infarction (81), unstable angina & other acute ischemic heart disease (82), angina pectoris (83), and coronary atherosclerosis (84). A patient with an ICD 9 code in condition category 81 is excluded from being coded in categories 82, 83, or 84, even if diagnosis codes in those categories are present.   
+
+## What you'll need  
+1) Extract a list of patient ICD 9 diagnosis codes from your EHR. The code below assumes this file has 4 columns (Patient_Identifier, Encounter_Identifier, ICD_Diagnosis_Code, and Diagnosis_Date). To identify diagnoses, you'll have to decide on a window of time to look at. For most cases, we look at two years worth of ICD 9 codes, but you may be interested in smaller or larger time periods. In the code below, this data set is called 'ICD9_Codes'.  
+2) Download the [2014-Final Model](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/Risk2014.html) and unzip the "CMS-HCC software V2213.79.L2" folder, which contains all the files to implement version 22 of the HCC model.  
+3) Set the "hcc" directory to the file path for the "CMS-HCC software V2213.79.L2" folder and the "ehr" directory to the file path containing your ICD 9 diagnosis codes.  
+
+## Packages  
+Load data.table, lubridate, and stringr:  
+``` {r packages, eval=FALSE}
+library(data.table)
+library(lubridate)
+library(stringr)
+```
+
+## Step 1: Build HCC label table  
+The function below converts the text in the SAS file V22H79L1.txt into a table with two columns. The first column is the HCC category and the second column is the HCC category label.  
+```{r hcc_labels, eval=FALSE}
+HCC_Labels <- function(hcc){
+    ## Set working directory
+    setwd(hcc)
+    
+    ## Load packages
+    require(data.table)
+    require(stringr)
+    
+    ## Read lines of SAS file
+    labels <- readLines("V22H79L1.TXT")[9:89]
+    
+    ## Combine lines that refer to same HCC
+    labels <- paste(labels, collapse = " ")
+    labels <- unlist(tstrsplit(labels, " HCC"))
+    
+    ## Convert to data table
+    labels <- as.data.table(labels)
+
+    ## Change column name
+    setnames(labels, "labels", "HCC")
+    
+    ## Separate each line into two variables
+    labels[, c("HCC","HCC_Label") := tstrsplit(HCC, "=", fixed = TRUE)]
+
+    ## Remove white space
+    Trim <- function(x){str_trim(x, side = "both")}
+    labels <- labels[, lapply(.SD, Trim)]
+    
+    ## Remove quotations from label
+    labels[, HCC_Label := gsub('"', "", HCC_Label)]
+    
+    ## Remove letters from HCC variable
+    labels[, HCC := as.integer(gsub("HCC", "", HCC))]
+    
+    ## Return label table
+    return(labels)
+}
+```
+
+Run the function above and assign the output to a table called labels:  
+```{r runLabels, eval=FALSE}
+labels <- HCC_Labels(hcc)
+```
+
+## Step 2: Classify ICD 9 Codes Into Condition Categories  
+This step uses ICD9 codes extracted from your EHR and the F2213L2P.TXT crosswalk file to group ICD 9 codes into the 79 relevant condition categories included in version 22 of the CMS HCC model.  
+```{r mergeICDs_CCs, eval = FALSE}
+Assign_CCs <- function(ICD9_Codes, hcc){
+    ## Load packages
+    require(data.table)
+    require(lubridate)
+    
+    ## Read in crosswalk
+    setwd(hcc)
+    crosswalk <- as.data.table(read.table("F2213L2P.TXT"))
+    
+    ########## Clean ICD 9 codes
+    ## Fix column names of ICD9 codes
+    if(names(ICD9_Codes) != c("Patient_Identifier", "Encounter_Identifier", "ICD_Diagnosis_Code", "Diagnosis_Date"))
+        setnames(ICD9_Codes, names(ICD9_Codes), c("Patient_Identifier", "Encounter_Identifier", "ICD_Diagnosis_Code", "Diagnosis_Date"))
+    
+    ## Fix dates on ICD 9 codes
+    if(class(ICD9_Codes$Diagnosis_Date) != "Date")
+        ICD9_Codes[, c("Diagnosis_Date", "Time", "AM_PM") := tstrsplit(Diagnosis_Date, " ", fixed = TRUE)][, c("Time", "AM_PM") := NULL][, Diagnosis_Date := as.Date(fast_strptime(Diagnosis_Date, format = "%m/%d/%Y"))]     
+    
+    ## Remove periods
+    if(sum(grepl(".", ICD9_Codes$ICD_Diagnosis_Code)) != 0)
+        ICD9_Codes[, ICD_Diagnosis_Code := gsub("\\.", "", ICD_Diagnosis_Code)]
+    
+    ########## Clean crosswalk
+    ## Change names
+    setnames(crosswalk, names(crosswalk), c("ICD_Diagnosis_Code", "HCC"))
+    
+    ########## Merge ICD 9 codes with crosswalk
+    ICD9_Codes <- merge(ICD9_Codes, crosswalk, by = "ICD_Diagnosis_Code")
+
+    ## Return ICD 9 codes
+    return(ICD9_Codes)
+}
+```
+
+The merge above is an inner join that assigns ICD 9 codes to condition categories. Note that many ICD 9 codes you extract from the EHR will be dropped, because they do not correspond to condition categories that are relevant for the model. For example, when I ran the function above on a sample of ~840,000 ICD 9 codes extracted from the EHR, only ~135,000 are assigned to condition categories. This should emphasize that HCCs should only be used to identify the prevalence of chronic conditions that are defined in the model.  
+
+Run the function above and pass the result to a table called ICD9s_CCs:  
+```{r runAssign_HCCs, eval=FALSE}
+ICD9s_CCs <- Assign_HCCs(ICD9_Codes, hcc)
+```
+
+## Step 3: Identify Condition Categories Across Population  
+Now that the ICD 9 codes are classified by patient and by condition category, you can calculate the presence of the 79 condition categories for each patient:  
+```{r cc_bypt, eval = FALSE}
+Collapse_CCs <- function(ICD9s_CCs, labels){
+    ## Load data.table
+    require(data.table)
+    
+    ## Count diagnosis codes for each patient in each category
+    cc_by_patient <- ICD9s_CCs[, .(Freq = .N), by = c("Patient_Identifier", "HCC")]
+    
+    ## Only keep categories where patients have more than one diagnosis code
+    cc_by_patient <- cc_by_patient[Freq >= 2]
+    
+    ## Only keep the columns for patient and HCC
+    cc_by_patient <- cc_by_patient[, .(Patient_Identifier, HCC)]
+    
+    ########## Convert long and skinny table to long and fat
+    ## Identify all the HCCs for which you have to build out dummy variables
+    dummies <- as.character(labels$HCC)
+    
+    ## Build out dummy variables for each category
+    cc_by_patient[,(paste("HCC", dummies, sep = "")):=lapply(dummies,function(x) as.numeric(HCC==as.character(x)))]
+    
+    ## Drop HCC variable
+    cc_by_patient[, HCC := NULL]
+    
+    ####### Collapse data to 1 row per patient
+    cc_by_patient <- cc_by_patient[, lapply(.SD, max), by = Patient_Identifier]
+    
+    ## Return data for all 79 CCs for each patient
+    return(cc_by_patient)
+}
+```
+
+Note that the function above takes labels (the output of step 1) and ICD9s_CCs (the output of step 2) as inputs. In return, the function builds a wide table with one row for each patient and 80 columns. The first column is patient identifier and the following 79 columns are for each of the condition categories. A value of 1 indicates presence of a condition and a value of 0 indicates absence of a condition.  
+
+Run the function above and assign the output to Condition_Categories:  
+```{r runCollapse_CCs, eval=FALSE}
+Condition_Categories <- Collapse_CCs(ICD9s_CCs, labels)
+```
+
+## Step 4: Build a Hierarchy Table  
+So far, we have been working with condition categories, NOT hierarchical condition categories. In the table built above, Condition_Categories, it's possible for patients to have "Diabetes without complication" as well as "Diabetes with chronic complications". We'll fix this issue by requiring patients to only have the most severe condition within a group of related conditions.  
+
+To determine the hierarchical structure of the condition categories, we'll build a table from the V22H79H1.TXT file. The table will have three columns: Condition Name, HCC, and a list of HCCs to zero if a patient has a given HCC in the second column. For example, a patient with a value of 1 for HCC 8 ("Metastatic Cancer and Acute Leukemia") has 0 values overwritten for HCC 9 ("Lung and Other Severe Cancers"), HCC 10 ("Lymphoma and Other Cancers"), HCC 11 ("Colorectal, Bladder, and Other Cancers"), and HCC 12 ("Breast, Prostate, and Other Cancers and Tumors").  
+```{r HCC_Table, eval=FALSE}
+HCC_Table <- function(hcc){
+    ## Load packages
+    require(data.table)
+    require(stringr)
+    
+    ## Load V22H79H1.txt
+    setwd(hcc)
+    Hierarchy <- as.data.table(readLines("V22H79H1.txt")[28:58])
+    
+    ## Change name of first column
+    setnames(Hierarchy, "V1", "Condition")
+    
+    ## Split out condition categories to zero
+    Hierarchy[, c("Condition", "HCC", "To_Zero") := tstrsplit(Condition, "%", fixed = TRUE)]
+    
+    ## Strip away extra characters in HCC variable
+    Hierarchy[, HCC := gsub("=", "HCC", str_extract(HCC, "=[0-9]+"))]
+    
+    ## Strip away extra characters in To_Zero variable
+    Hierarchy[, To_Zero := gsub("STR|\\)|;| ", "", To_Zero)]
+    
+    ## Add HCC before every number To_Zero
+    Hierarchy[, To_Zero := gsub("\\(", "HCC", To_Zero)]
+    Hierarchy[, To_Zero := gsub(",", ",HCC", To_Zero)]
+
+    ## Strip away extra characters in Condition variable
+    Hierarchy[, Condition := str_extract(Condition, "[a-zA-Z]+ *[0-9]")]
+
+    ## Trim away white space from all columns
+    Trim <- function(x){str_trim(x, side = "both")}
+    Hierarchy <- Hierarchy[, lapply(.SD, Trim)]
+    
+    ## Return table
+    return(Hierarchy)
+}
+```
+
+Run the function above and assign the output to Hierarchy_Table:  
+```{r runHCC_Table, eval=FALSE}
+Hierarchy_Table <- HCC_Table(hcc)
+```
+
+## Step 5: Implement Hierarchy  
+The last step is implementing the hierarchical structure of condition categories (output of step 4) on the "Condition_Categories" table (output of step 3), which shows patient-level diagnoses for each of the 79 condition categories.  
+
+```{r Implement_Hierarchy, eval=FALSE}
+Hierarchy <- function(Hierarchy_Table, Condition_Categories){
+    
+    ## Get parameters for loops (number of hierarchy conditions and number of patients)
+    Hierarchy_Count <- nrow(Hierarchy_Table)
+    Patient_Count <- nrow(Condition_Categories)
+    
+    ## Loop for each hierarchy condition
+    for (i in 1:Hierarchy_Count){
+        
+        ## Get the name of the column the hierarchy condition is based on and the vector of columns to zero
+        colname <- Hierarchy_Table$HCC[i]
+        zero_list <- unlist(strsplit(Hierarchy_Table$To_Zero[i], split=","))
+        
+        ## Loop through all the columns to set to 0
+        for (k in zero_list){
+            set(Condition_Categories, which(Condition_Categories[[colname]] == 1), k, 0)
+        }
+        
+        ## Show progress through conditions
+        print(i)
+    }
+    
+    ## Return Hierarchical Condition Categories
+    return(Condition_Categories)
+}
+```
+
+Run the function above and assign the output to HCCs:  
+```{r run Hierarchy, eval=FALSE}
+HCCs <- Hierarchy(Hierarchy_Table, Condition_Categories)
+```
+
+## Conclusion  
+And there you have it! For a list of patients, you've converted ICD9 codes into 79 chronic diseases.  
