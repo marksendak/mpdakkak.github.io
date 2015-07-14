@@ -8,7 +8,7 @@ The Centers for Medicare & Medicaid Services (CMS) hierarchical condition catego
 The full model includes variable interactions, demographics (e.g., age, gender), and indicator variables for Medicaid enrollment and disabled status. However, this post will only cover using the HCC model to cluster diagnosis codes into meaningful categories. We'll accomplish this by using 5 functions built below, each with it's own corresponding step. We'll implement the 2014 model for ICD 9 codes, but once ICD 10 is implemented in my environment, I'll update the post.  
 
 To see the different versions of the model, please visit:  
-- [2014 Model](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/Risk2014.html)  
+- [2014 Model, use final model](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/Risk2014.html)  
 - [2015 Model](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/Risk2015.html)  
 - [ICD 10 Mapping](https://www.cms.gov/Medicare/Health-Plans/MedicareAdvtgSpecRateStats/Risk-Adjustors-Items/IDC10Mappings.html)  
 
@@ -248,4 +248,4 @@ HCCs <- Hierarchy(Hierarchy_Table, Condition_Categories)
 ```
 
 ## Conclusion  
-And there you have it! For a list of patients, you've converted ICD9 codes into 79 chronic diseases.  
+And there you have it! For a list of patients, you've converted ICD9 codes into 79 meaningful diagnoses.  
