@@ -58,7 +58,16 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 }
 </script>
 
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
+  ga('create', 'UA-66370374-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
 
 </head>
 
@@ -155,7 +164,262 @@ img {
 </div>
 
 
-<p>Coming soon</p>
+<div id="intro" class="section level2">
+<h2>Intro</h2>
+<p>CPT is a registered trademark of the American Medical Association (AMA). For basic information, please see “Decoding the Codes: CPT and RUC simplified”, which can be found <a href="http://www.ama-assn.org/ama/pub/physician-resources/solutions-managing-your-practice/coding-billing-insurance/cpt.page?">here</a>. The codes and descriptions provide a common language to describe health care services and are used in medical billing.</p>
+<p>The AMA hosts a <a href="https://ocm.ama-assn.org/OCM/CPTRelativeValueSearch.do?submitbutton=accept">web site</a> to enable users to look up individual CPT codes as well as reimbursement rates for both facility and non-facility sites. You can also find many web pages that will break down CPT codes for a certain specialty (for example, <a href="http://www.apapracticecentral.org/reimbursement/billing/crosswalk-codes.aspx">psychotherapy</a>). But what if you have extracted thousands of procedures from your electronic health record and need some description of what the codes are?</p>
+</div>
+<div id="clinical-classification-software" class="section level2">
+<h2>Clinical Classification Software</h2>
+<p>The <a href="https://www.hcup-us.ahrq.gov/toolssoftware/ccs_svcsproc/ccssvcproc.jsp">Clinical Classification Software (CCS) for services and procedures</a> is a software tool developed as part of the <a href="https://www.hcup-us.ahrq.gov/overview.jsp">Healthcare Cost and Utilization Project</a>, a Federal-State-Industry partnership sponsored by the Agency for Healthcare Research and Quality. This software classifies more than 9,000 CPT codes into 244 clinically meaningful categories.</p>
+<p>After you download the zipped file, you’ll notice the table (2015_ccs_services_procedures.csv) has CPT codes in ranges in order to adhere to copyright restrictions. However, when trying to report on many thousands of procedures, you will need a crosswalk that assigns a CCS group to each CPT code. We’ll now pivot and walk through a problem that presents similar obstacles.</p>
+</div>
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<p>Load data.table and <a href="http://cran.r-project.org/web/packages/stringr/stringr.pdf">stringr</a>:</p>
+<pre class="r"><code>library(data.table)
+library(stringr)</code></pre>
+</div>
+<div id="build-a-custom-data-set" class="section level2">
+<h2>Build a Custom Data Set</h2>
+<p>Let’s build a data table with three columns: range of codes, numerical class assignments, and labels for each class. We’ll do this for a catalogue of products being sold in a store.</p>
+<pre class="r"><code>########## Build Code Ranges
+## Set seed and generate random data
+set.seed(1234)
+Codes &lt;- data.table(Start = sample(c(100:500), 10, replace = FALSE), Size = sample(c(1:5), 10, replace = TRUE), With_Letter = sample(c(1:3), 10, replace = TRUE), Letter = sample(c(&quot;A&quot;, &quot;B&quot;, &quot;C&quot;, &quot;D&quot;, &quot;E&quot;, &quot;F&quot;, &quot;G&quot;), 10, replace = TRUE))
+
+## Build end of code range
+Codes[, End := Start + Size]
+
+## Change Start and End to Characters
+Codes[, Start := as.character(Start)][, End := as.character(End)]
+
+## For items where With_Letter == 1, place letter before start and end code
+Codes[With_Letter == 1, Start := paste(Letter, Start, sep = &quot;&quot;)]
+Codes[With_Letter == 1, End := paste(Letter, End, sep = &quot;&quot;)]
+
+## For items where With_Letter == 3, place letter at end of start and end code
+Codes[With_Letter == 3, Start := paste(Start, Letter, sep = &quot;&quot;)]
+Codes[With_Letter == 3, End := paste(End, Letter, sep = &quot;&quot;)]
+
+## Build Ranges
+Codes[, Range := paste(Start, End, sep = &quot;-&quot;)]
+
+## Insert single quote at beginning and end of range
+Codes[, Range := paste(&quot;&#39;&quot;, Range, &quot;&#39;&quot;, sep = &quot;&quot;)]
+
+## Remove all columns except for Ranges
+Codes[, c(&quot;Start&quot;, &quot;Size&quot;, &quot;With_Letter&quot;, &quot;Letter&quot;, &quot;End&quot;) := NULL]
+
+########## Build numberic class and class labels
+Labels &lt;- data.table(Class = c(1:10), Label = c(&quot;Soap&quot;, &quot;Shampoo&quot;, &quot;Conditioner&quot;, &quot;Laundry Detergent&quot;, &quot;Flour&quot;, &quot;Sugar&quot;, &quot;Deoderant&quot;, &quot;Toothbrush&quot;, &quot;Toothpaste&quot;, &quot;Floss&quot;))
+
+########## Bind ranges and labels
+data &lt;- cbind(Codes, Labels)
+
+########## Print data
+data</code></pre>
+<pre><code>##           Range Class             Label
+##  1: &#39;D145-D149&#39;     1              Soap
+##  2: &#39;B348-B351&#39;     2           Shampoo
+##  3: &#39;C343-C345&#39;     3       Conditioner
+##  4: &#39;D499-D504&#39;     4 Laundry Detergent
+##  5: &#39;B441-B443&#39;     5             Flour
+##  6: &#39;353F-358F&#39;     6             Sugar
+##  7:   &#39;103-105&#39;     7         Deoderant
+##  8: &#39;191B-193B&#39;     8        Toothbrush
+##  9: &#39;361G-362G&#39;     9        Toothpaste
+## 10: &#39;F301-F303&#39;    10             Floss</code></pre>
+</div>
+<div id="overview-of-problem" class="section level2">
+<h2>Overview of Problem</h2>
+<p>From above, we have a list of ranges that each categorize items in a store. Let’s say that you have a collection of receipts and on each receipt is an item number that falls within the ranges. If you want to easily classify each item, then you need a one-to-one crosswalk between item codes and categories.</p>
+<p>We’ll break this problem into two parts. First, we’ll handle cases where the ranges of codes don’t have letters. Second, we’ll handle cases where the range of codes have a letter at the beginning or a letter at the end.</p>
+<p>Finally, let’s say that each code must be 5 characters long. For example, we must append leading zeros to the code for item number A62, so that it appears as “A0062”.</p>
+</div>
+<div id="step-1-handle-cases-without-letters" class="section level2">
+<h2>Step 1: Handle Cases Without Letters</h2>
+<pre class="r"><code>Crosswalk_NoLetters &lt;- function(data){
+    ########## Clean Data
+    ## Subset data to only contain ranges without letters
+    noletters &lt;- data[!(grep(&quot;[A-Z]+&quot;, Range))]
+    
+    ## Remove single quote
+    noletters[, Range := gsub(&quot;&#39;&quot;, &quot;&quot;, Range)]
+    
+    ## Split Range into Start and End
+    noletters[, c(&quot;Start&quot;, &quot;End&quot;) := tstrsplit(Range, &quot;-&quot;, fixed=TRUE)]
+    
+    ## Convert class to numeric
+    noletters[, Start := as.numeric(Start)][, End := as.numeric(End)]
+    
+    ########## Set up writing out
+    ## Create new table to write codes to
+    output &lt;- data.table(Code=rep(0,100000), Class=rep(0,100000), Label=rep(&quot;empty&quot;,100000))
+    
+    ## Set line in output to write to
+    out_line &lt;- 1L
+    
+    ########## Read through every line in data set
+    for(i in 1:nrow(noletters)){
+        ## Calculate the number of times to repeat rows
+        Reps &lt;- (noletters[i,End] - noletters[i,Start] + 1)
+        
+        ## And loop through to write new lines for each code
+        for(j in 1:Reps){
+            ## The j index writes (Reps) new rows, where the value in the code column of each incremental row increases by 1
+            set(output,out_line + (j - 1L),1L, noletters[i,Start] + (j - 1L))
+            set(output,out_line + (j - 1L),2L, noletters[i,Class])
+            set(output,out_line + (j - 1L),3L, noletters[i,Label])
+        }
+        ## Bump up the line to print from by the number of Replicate rows written
+        out_line &lt;- as.integer(out_line + Reps)
+    }
+    
+    ########## Append leading zeros
+    ## Keep output that contains data
+    output &lt;- output[Code != 0]
+    
+    ## Convert code to a strong
+    output[, Code := as.character(Code)]
+    
+    ## Count number of leading zeros to insert
+    output[, Leading_Zeros := as.integer(5 - nchar(Code))]
+    
+    ## Fill leading zeros in Code column for the rows that require it 
+    for (i in which(output$Leading_Zeros != 0))
+        set(output, i, 1L, paste(c(rep(&quot;0&quot;, times = output[i, Leading_Zeros]), output[i, Code]), collapse = &quot;&quot;))
+
+    ## Drop leading zeros column
+    output[, Leading_Zeros := NULL]
+    
+    ########## Return output that contains data
+    return(output)
+}</code></pre>
+</div>
+<div id="step-2-handle-cases-with-letters" class="section level2">
+<h2>Step 2: Handle Cases With Letters</h2>
+<pre class="r"><code>Crosswalk_Letters &lt;- function(data){
+    ########## Clean data
+    ## Subset data to only contain ranges without letters
+    withletters &lt;- data[grep(&quot;[A-Z]+&quot;, Range)]
+    
+    ## Remove single quote
+    withletters[, Range := gsub(&quot;&#39;&quot;, &quot;&quot;, Range)]
+    
+    ## Pull letter at beginning of line
+    withletters[grep(&quot;^[A-Z]&quot;, Range), At_Start := substr(Range, 1, 1)]
+
+    ## Pull letter at end of line
+    withletters[grep(&quot;[A-Z]$&quot;, Range), At_End := str_sub(Range, -1)]
+
+    ## Remove letters from range
+    withletters[, Range := gsub(&quot;[A-Z]&quot;, &quot;&quot;, Range)]
+    
+    ## Split Range into Start and End
+    withletters[, c(&quot;Start&quot;, &quot;End&quot;) := tstrsplit(Range, &quot;-&quot;, fixed=TRUE)]
+    
+    ## Convert class to numeric
+    withletters[, Start := as.numeric(Start)][, End := as.numeric(End)]
+    
+    ########## Set up writing out
+    ## Create new table to write codes to
+    output &lt;- data.table(Code=rep(0,100000), Class=rep(0,100000), Label=rep(&quot;empty&quot;,100000), At_Start = rep(&quot;empty&quot;,100000), At_End = rep(&quot;empty&quot;,100000))
+    
+    ## Set line in output to write to
+    out_line &lt;- 1L
+    
+    ########## Read through every line in data set
+    for(i in 1:nrow(withletters)){
+        ## Calculate the number of times to repeat rows
+        Reps &lt;- (withletters[i,End] - withletters[i,Start] + 1)
+        
+        ## And loop through to write new lines for each code
+        for(j in 1:Reps){
+            ## The j index writes (Reps) new rows, where the value in the code column of each incremental row increases by 1
+            set(output,out_line + (j - 1L),1L, withletters[i,Start] + (j - 1L))
+            set(output,out_line + (j - 1L),2L, withletters[i,Class])
+            set(output,out_line + (j - 1L),3L, withletters[i,Label])
+            set(output,out_line + (j - 1L),4L, withletters[i,At_Start])
+            set(output,out_line + (j - 1L),5L, withletters[i,At_End])
+        }
+        ## Bump up the line to print from by the number of Replicate rows written
+        out_line &lt;- as.integer(out_line + Reps)
+    }
+    
+    ########## Drop output without data
+    output &lt;- output[Code != 0]
+    
+    ########## Append leading zeros
+    ## Convert code back to string
+    output[, Code := as.character(Code)]
+    
+    ## Count number of leading zeros to insert
+    output[, Leading_Zeros := as.integer(4 - nchar(Code))]
+    
+    ## Fill leading zeros in Code column for the rows that require it 
+    for (i in which(output$Leading_Zeros != 0))
+        set(output, i, 1L, paste(c(rep(&quot;0&quot;, times = output[i, Leading_Zeros]), output[i, Code]), collapse = &quot;&quot;))
+    
+    ########## Replace letter at beginning or end
+    ## Add letter at end
+    output[!is.na(At_End), Code := paste(Code, At_End, sep = &quot;&quot;)]
+
+    ## Add letter at start
+    output[!is.na(At_Start), Code := paste(At_Start, Code, sep = &quot;&quot;)]
+
+    ########## Remove extra columns
+    output[, c(&quot;At_Start&quot;, &quot;At_End&quot;, &quot;Leading_Zeros&quot;) := NULL]
+    
+    ## Return output
+    return(output)
+}</code></pre>
+</div>
+<div id="step-3-run-functions-and-append-results" class="section level2">
+<h2>Step 3: Run functions and append results</h2>
+<pre class="r"><code>crosswalk &lt;- rbind(Crosswalk_NoLetters(data), Crosswalk_Letters(data))
+print(crosswalk)</code></pre>
+<pre><code>##      Code Class             Label
+##  1: 00103     7         Deoderant
+##  2: 00104     7         Deoderant
+##  3: 00105     7         Deoderant
+##  4: D0145     1              Soap
+##  5: D0146     1              Soap
+##  6: D0147     1              Soap
+##  7: D0148     1              Soap
+##  8: D0149     1              Soap
+##  9: B0348     2           Shampoo
+## 10: B0349     2           Shampoo
+## 11: B0350     2           Shampoo
+## 12: B0351     2           Shampoo
+## 13: C0343     3       Conditioner
+## 14: C0344     3       Conditioner
+## 15: C0345     3       Conditioner
+## 16: D0499     4 Laundry Detergent
+## 17: D0500     4 Laundry Detergent
+## 18: D0501     4 Laundry Detergent
+## 19: D0502     4 Laundry Detergent
+## 20: D0503     4 Laundry Detergent
+## 21: D0504     4 Laundry Detergent
+## 22: B0441     5             Flour
+## 23: B0442     5             Flour
+## 24: B0443     5             Flour
+## 25: 0353F     6             Sugar
+## 26: 0354F     6             Sugar
+## 27: 0355F     6             Sugar
+## 28: 0356F     6             Sugar
+## 29: 0357F     6             Sugar
+## 30: 0358F     6             Sugar
+## 31: 0191B     8        Toothbrush
+## 32: 0192B     8        Toothbrush
+## 33: 0193B     8        Toothbrush
+## 34: 0361G     9        Toothpaste
+## 35: 0362G     9        Toothpaste
+## 36: F0301    10             Floss
+## 37: F0302    10             Floss
+## 38: F0303    10             Floss
+##      Code Class             Label</code></pre>
+</div>
 
 
 </div>

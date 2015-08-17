@@ -2,4 +2,213 @@
 title: "CCS For Procedure Codes"
 ---
 
-Coming soon
+## Intro  
+CPT is a registered trademark of the American Medical Association (AMA). For basic information, please see "Decoding the Codes: CPT and RUC simplified", which can be found [here](http://www.ama-assn.org/ama/pub/physician-resources/solutions-managing-your-practice/coding-billing-insurance/cpt.page?). The codes and descriptions provide a common language to describe health care services and are used in medical billing.  
+
+The AMA hosts a [web site](https://ocm.ama-assn.org/OCM/CPTRelativeValueSearch.do?submitbutton=accept) to enable users to look up individual CPT codes as well as reimbursement rates for both facility and non-facility sites. You can also find many web pages that will break down CPT codes for a certain specialty (for example, [psychotherapy](http://www.apapracticecentral.org/reimbursement/billing/crosswalk-codes.aspx)). But what if you have extracted thousands of procedures from your electronic health record and need some description of what the codes are?  
+
+## Clinical Classification Software  
+The [Clinical Classification Software (CCS) for services and procedures](https://www.hcup-us.ahrq.gov/toolssoftware/ccs_svcsproc/ccssvcproc.jsp) is a software tool developed as part of the [Healthcare Cost and Utilization Project](https://www.hcup-us.ahrq.gov/overview.jsp), a Federal-State-Industry partnership sponsored by the Agency for Healthcare Research and Quality. This software classifies more than 9,000 CPT codes into 244 clinically meaningful categories.  
+
+After you download the zipped file, you'll notice the table (2015_ccs_services_procedures.csv) has CPT codes in ranges in order to adhere to copyright restrictions. However, when trying to report on many thousands of procedures, you will need a crosswalk that assigns a CCS group to each CPT code. We'll now pivot and walk through a problem that presents similar obstacles.  
+
+## Packages  
+Load data.table and [stringr](http://cran.r-project.org/web/packages/stringr/stringr.pdf):  
+``` {r packages, echo=TRUE, eval=TRUE}
+library(data.table)
+library(stringr)
+```
+
+## Build a Custom Data Set  
+Let's build a data table with three columns: range of codes, numerical class assignments, and labels for each class. We'll do this for a catalogue of products being sold in a store.  
+```{r BuildData, echo=TRUE, eval=TRUE}
+########## Build Code Ranges
+## Set seed and generate random data
+set.seed(1234)
+Codes <- data.table(Start = sample(c(100:500), 10, replace = FALSE), Size = sample(c(1:5), 10, replace = TRUE), With_Letter = sample(c(1:3), 10, replace = TRUE), Letter = sample(c("A", "B", "C", "D", "E", "F", "G"), 10, replace = TRUE))
+
+## Build end of code range
+Codes[, End := Start + Size]
+
+## Change Start and End to Characters
+Codes[, Start := as.character(Start)][, End := as.character(End)]
+
+## For items where With_Letter == 1, place letter before start and end code
+Codes[With_Letter == 1, Start := paste(Letter, Start, sep = "")]
+Codes[With_Letter == 1, End := paste(Letter, End, sep = "")]
+
+## For items where With_Letter == 3, place letter at end of start and end code
+Codes[With_Letter == 3, Start := paste(Start, Letter, sep = "")]
+Codes[With_Letter == 3, End := paste(End, Letter, sep = "")]
+
+## Build Ranges
+Codes[, Range := paste(Start, End, sep = "-")]
+
+## Insert single quote at beginning and end of range
+Codes[, Range := paste("'", Range, "'", sep = "")]
+
+## Remove all columns except for Ranges
+Codes[, c("Start", "Size", "With_Letter", "Letter", "End") := NULL]
+
+########## Build numberic class and class labels
+Labels <- data.table(Class = c(1:10), Label = c("Soap", "Shampoo", "Conditioner", "Laundry Detergent", "Flour", "Sugar", "Deoderant", "Toothbrush", "Toothpaste", "Floss"))
+
+########## Bind ranges and labels
+data <- cbind(Codes, Labels)
+
+########## Print data
+data
+```
+
+## Overview of Problem  
+From above, we have a list of ranges that each categorize items in a store. Let's say that you have a collection of receipts and on each receipt is an item number that falls within the ranges. If you want to easily classify each item, then you need a one-to-one crosswalk between item codes and categories.  
+
+We'll break this problem into two parts. First, we'll handle cases where the ranges of codes don't have letters. Second, we'll handle cases where the range of codes have a letter at the beginning or a letter at the end.  
+
+Finally, let's say that each code must be 5 characters long. For example, we must append leading zeros to the code for item number A62, so that it appears as "A0062".  
+
+## Step 1: Handle Cases Without Letters  
+```{r NoLetters_Fxn, echo=TRUE, eval=TRUE}
+Crosswalk_NoLetters <- function(data){
+    ########## Clean Data
+    ## Subset data to only contain ranges without letters
+    noletters <- data[!(grep("[A-Z]+", Range))]
+    
+    ## Remove single quote
+    noletters[, Range := gsub("'", "", Range)]
+    
+    ## Split Range into Start and End
+    noletters[, c("Start", "End") := tstrsplit(Range, "-", fixed=TRUE)]
+    
+    ## Convert class to numeric
+    noletters[, Start := as.numeric(Start)][, End := as.numeric(End)]
+    
+    ########## Set up writing out
+    ## Create new table to write codes to
+    output <- data.table(Code=rep(0,100000), Class=rep(0,100000), Label=rep("empty",100000))
+    
+    ## Set line in output to write to
+    out_line <- 1L
+    
+    ########## Read through every line in data set
+    for(i in 1:nrow(noletters)){
+        ## Calculate the number of times to repeat rows
+        Reps <- (noletters[i,End] - noletters[i,Start] + 1)
+        
+        ## And loop through to write new lines for each code
+        for(j in 1:Reps){
+            ## The j index writes (Reps) new rows, where the value in the code column of each incremental row increases by 1
+            set(output,out_line + (j - 1L),1L, noletters[i,Start] + (j - 1L))
+            set(output,out_line + (j - 1L),2L, noletters[i,Class])
+            set(output,out_line + (j - 1L),3L, noletters[i,Label])
+        }
+        ## Bump up the line to print from by the number of Replicate rows written
+        out_line <- as.integer(out_line + Reps)
+    }
+    
+    ########## Append leading zeros
+    ## Keep output that contains data
+    output <- output[Code != 0]
+    
+    ## Convert code to a strong
+    output[, Code := as.character(Code)]
+    
+    ## Count number of leading zeros to insert
+    output[, Leading_Zeros := as.integer(5 - nchar(Code))]
+    
+    ## Fill leading zeros in Code column for the rows that require it 
+    for (i in which(output$Leading_Zeros != 0))
+        set(output, i, 1L, paste(c(rep("0", times = output[i, Leading_Zeros]), output[i, Code]), collapse = ""))
+
+    ## Drop leading zeros column
+    output[, Leading_Zeros := NULL]
+    
+    ########## Return output that contains data
+    return(output)
+}
+```
+
+## Step 2: Handle Cases With Letters  
+```{r WithLetters_Fxn, eval=TRUE,echo=TRUE}
+Crosswalk_Letters <- function(data){
+    ########## Clean data
+    ## Subset data to only contain ranges without letters
+    withletters <- data[grep("[A-Z]+", Range)]
+    
+    ## Remove single quote
+    withletters[, Range := gsub("'", "", Range)]
+    
+    ## Pull letter at beginning of line
+    withletters[grep("^[A-Z]", Range), At_Start := substr(Range, 1, 1)]
+
+    ## Pull letter at end of line
+    withletters[grep("[A-Z]$", Range), At_End := str_sub(Range, -1)]
+
+    ## Remove letters from range
+    withletters[, Range := gsub("[A-Z]", "", Range)]
+    
+    ## Split Range into Start and End
+    withletters[, c("Start", "End") := tstrsplit(Range, "-", fixed=TRUE)]
+    
+    ## Convert class to numeric
+    withletters[, Start := as.numeric(Start)][, End := as.numeric(End)]
+    
+    ########## Set up writing out
+    ## Create new table to write codes to
+    output <- data.table(Code=rep(0,100000), Class=rep(0,100000), Label=rep("empty",100000), At_Start = rep("empty",100000), At_End = rep("empty",100000))
+    
+    ## Set line in output to write to
+    out_line <- 1L
+    
+    ########## Read through every line in data set
+    for(i in 1:nrow(withletters)){
+        ## Calculate the number of times to repeat rows
+        Reps <- (withletters[i,End] - withletters[i,Start] + 1)
+        
+        ## And loop through to write new lines for each code
+        for(j in 1:Reps){
+            ## The j index writes (Reps) new rows, where the value in the code column of each incremental row increases by 1
+            set(output,out_line + (j - 1L),1L, withletters[i,Start] + (j - 1L))
+            set(output,out_line + (j - 1L),2L, withletters[i,Class])
+            set(output,out_line + (j - 1L),3L, withletters[i,Label])
+            set(output,out_line + (j - 1L),4L, withletters[i,At_Start])
+            set(output,out_line + (j - 1L),5L, withletters[i,At_End])
+        }
+        ## Bump up the line to print from by the number of Replicate rows written
+        out_line <- as.integer(out_line + Reps)
+    }
+    
+    ########## Drop output without data
+    output <- output[Code != 0]
+    
+    ########## Append leading zeros
+    ## Convert code back to string
+    output[, Code := as.character(Code)]
+    
+    ## Count number of leading zeros to insert
+    output[, Leading_Zeros := as.integer(4 - nchar(Code))]
+    
+    ## Fill leading zeros in Code column for the rows that require it 
+    for (i in which(output$Leading_Zeros != 0))
+        set(output, i, 1L, paste(c(rep("0", times = output[i, Leading_Zeros]), output[i, Code]), collapse = ""))
+    
+    ########## Replace letter at beginning or end
+    ## Add letter at end
+    output[!is.na(At_End), Code := paste(Code, At_End, sep = "")]
+
+    ## Add letter at start
+    output[!is.na(At_Start), Code := paste(At_Start, Code, sep = "")]
+
+    ########## Remove extra columns
+    output[, c("At_Start", "At_End", "Leading_Zeros") := NULL]
+    
+    ## Return output
+    return(output)
+}
+```
+
+## Step 3: Run functions and append results    
+```{r AppendResults, eval=TRUE,echo=TRUE}
+crosswalk <- rbind(Crosswalk_NoLetters(data), Crosswalk_Letters(data))
+print(crosswalk)
+```
